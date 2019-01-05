@@ -1,2 +1,28 @@
 *.class
 *.log
+
+# sbt specific
+.cache
+.history
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+.sbtserver
+.sbtserver.lock
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+
+.idea
+activator
+activator-launch-1.3.7.jar
+.ensime
+.ensime_cache/
+
+tmp/
+
