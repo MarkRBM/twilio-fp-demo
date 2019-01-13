@@ -1,0 +1,53 @@
+package logic.kafka
+
+import interfaces.ErrorHandler
+import models._
+import io.chrisdavenport.log4cats.Logger
+import logic.Texts
+import scalaz._
+import Scalaz._
+import fs2._
+import kafkatopics.models._
+import interfaces.kafka.SmsStream
+import utilities.FS2Utils
+
+final class SmsNotifications[F[_]](
+  smsStream: SmsStream[F],
+  texts: Texts[F],
+  errorHandler: ErrorHandler
+)(implicit F: Monad[F], E: MonadError[F, Throwable], L: Logger[F]) {
+  def stream: Stream[F, Unit] =
+    smsStream.consume.through(fromAvroPipe).to(sendSink)
+
+  private def send(in: TextMessageRequest): F[Unit] =
+    texts
+      .sendText(in.textMessage)
+      .recover(errorHandler.recovering)
+
+  private def fromAvro(
+    in: (SmsNotificationsKeyAvro, SmsNotificationsValueAvro)
+  ): F[TextMessageRequest] = F.pure {
+    in match {
+      case (key, value) => {
+        val proxyValue = value.getProxy
+        val p          = Option(proxyValue)
+        val tm = SMS(
+          p.filterNot(_.trim.isEmpty).map(UnvalidatedPhoneNumber(_)),
+          UnvalidatedPhoneNumber(value.getTo),
+          value.getBody
+        )
+        TextMessageRequest(tm)
+      }
+    }
+  }
+
+  private def fromAvroPipe: Pipe[
+    F,
+    (SmsNotificationsKeyAvro, SmsNotificationsValueAvro),
+    TextMessageRequest
+  ] =
+    FS2Utils.liftPipe(fromAvro _)
+  private def sendSink: Sink[F, TextMessageRequest] =
+    FS2Utils.liftSink[F, TextMessageRequest](send _)
+
+}

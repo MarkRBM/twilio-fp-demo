@@ -1,0 +1,13 @@
+{
+  "namespace": "kafkatopics.models",
+  "type": "record",
+  "name": "SmsNotificationsKeyAvro",
+  "fields": [
+    {
+      "name": "guid", "type": "string", "logicalType": "uuid"
+    },
+    {
+      "name": "appCode", "type": "string"
+    }
+  ]
+}

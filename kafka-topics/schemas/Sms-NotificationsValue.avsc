@@ -1,0 +1,16 @@
+{
+  "namespace": "kafkatopics.models",
+  "type": "record",
+  "name": "SmsNotificationsValueAvro",
+  "fields": [
+    {
+      "name": "to", "type": "string"
+    },
+    {
+      "name": "body", "type": "string"
+    },
+    {
+      "name": "proxy", "type": ["null", "string"], "default": null
+    }
+   ]
+}
