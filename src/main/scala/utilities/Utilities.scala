@@ -1,14 +1,10 @@
 package utilities
 
-import com.ovoenergy.fs2.kafka.ConsumerSettings
 import implementations.doobs.TransactorProvider
-import org.apache.kafka.clients.consumer._
-import models.ProxyInfo
 import java.sql.Timestamp
 import java.time.Instant
 import java.util.UUID
 import scala.concurrent.duration._
-import fs2._
 
 import scalaz.zio.IO
 import scalaz.zio.interop._
@@ -35,8 +31,6 @@ object Epoch {
 object DoobieUtils {
   implicit val UUIDMeta: Meta[UUID] = Meta[String]
     .xmap(((id: String) => UUID.fromString(id)), (uuid: UUID) => uuid.toString)
-  implicit val ProxyInfoMeta: Meta[ProxyInfo] = Meta[String]
-    .xmap(((info: String) => ProxyInfo(info)), (info: ProxyInfo) => info.id)
   implicit val EpochMeta: Meta[Epoch] = Meta[Timestamp].xmap(
     ((date: Timestamp) => Epoch(date.toInstant.toEpochMilli())),
     ((epoch: Epoch) => new Timestamp(epoch.millis))
@@ -50,46 +44,10 @@ object DoobieUtils {
       tx  <- transactorProvider.getTransactor
       res <- q.transact(tx)
     } yield res
-
-  def scheduleExecution[R](q: ConnectionIO[R], d: Duration)(
-    implicit transactorProvider: TransactorProvider[Task]
-  ): Task[Unit] =
-    for {
-      _ <- (for {
-            _   <- IO.sleep(d)
-            res <- execute[R](q)
-          } yield res).fork
-    } yield ()
 }
 
-case class KafkaConfig(
-  topicName: String,
-  pollTimeout: Duration,
-  maxParallelism: Int,
-  brokers: String,
-  groupId: String
-) {
-  def getConsumerSettings: ConsumerSettings = ConsumerSettings(
-    pollTimeout = pollTimeout,
-    maxParallelism = maxParallelism,
-    nativeSettings = Map(
-      ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
-      ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG  -> brokers,
-      ConsumerConfig.GROUP_ID_CONFIG           -> groupId,
-      ConsumerConfig.AUTO_OFFSET_RESET_CONFIG  -> "latest"
-    )
-  )
-}
 final case class ServerConfig(
-  callbackurl: String,
-  proxyDuration: Duration,
   twilioRootAccId: String,
   twilioRootAccToken: String,
-  kafkaConfig: KafkaConfig,
   raygunApiKey: Option[String]
 )
-
-object FS2Utils {
-  def liftPipe[F[_], A, B](f: A => F[B]): Pipe[F, A, B] = _.evalMap(f)
-  def liftSink[F[_], A](f: A => F[Unit]): Sink[F, A]    = liftPipe[F, A, Unit](f)
-}

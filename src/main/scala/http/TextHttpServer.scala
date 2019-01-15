@@ -20,13 +20,12 @@ object TextHttpServer {
 
   def httpStream[F[_]: Effect: Logger](
     texts: Texts[F],
-    proxy: Proxies[F],
     eh: ErrorHandler
   )(implicit ex: ExecutionContext): Stream[F, ExitCode] =
     BlazeBuilder[F]
       .bindHttp(8080, "0.0.0.0")
       .mountService(
-        new TextHttpService[F].getService(texts, proxy, eh),
+        new TextHttpService[F].getService(texts, eh),
         "/"
       )
       .serve

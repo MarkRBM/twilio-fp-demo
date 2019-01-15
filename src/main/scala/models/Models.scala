@@ -58,12 +58,6 @@ final case class TwilioSMS(
   to: ValidatedPhoneNumber,
   body: String
 ) extends TwilioTextMessage
-final case class TwilioMMS(
-  from: Option[ValidatedPhoneNumber],
-  to: ValidatedPhoneNumber,
-  body: String,
-  mediaUrl: String
-) extends TwilioTextMessage
 
 final case class TwilioNumber(
   sid: String,
@@ -79,17 +73,4 @@ final case class InboundTwilioText(
   from: String,
   to: String,
   body: String
-)
-
-final case class ProxyInfo(id: String)
-final case class Proxy(
-  from: String,
-  to: String,
-  twilioNumber: String,
-  info: Option[ProxyInfo],
-  uuid: Option[UUID]
-)
-final case class AppInfoResponse(
-  status: String,
-  response: DatabaseInformation
 )

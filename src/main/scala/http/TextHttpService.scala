@@ -31,11 +31,10 @@ class TextHttpService[F[_]] extends Http4sDsl[F] {
     new Decoder[TextMessageRequest] {
       final def apply(c: HCursor): Decoder.Result[TextMessageRequest] =
         for {
-          from <- c.downField("proxy").as[Option[String]]
           to   <- c.downField("to").as[String]
           body <- c.downField("body").as[String]
           txt = SMS(
-            from.filterNot(_.trim.isEmpty).map(UnvalidatedPhoneNumber(_)),
+            None,
             UnvalidatedPhoneNumber(to),
             body
           )
@@ -45,7 +44,6 @@ class TextHttpService[F[_]] extends Http4sDsl[F] {
 
   def getService(
     texts: Texts[F],
-    proxies: logic.Proxies[F],
     errorHandler: ErrorHandler
   )(
     implicit F: Effect[F],
@@ -69,37 +67,10 @@ class TextHttpService[F[_]] extends Http4sDsl[F] {
         resp <- Ok("sent".asJson)
         _    <- Logger[F].debug("Successfully handled HTTP request to send text")
       } yield resp
-
-    case req @ GET -> Root / "text-replies" :? MessageSidMatcher(msid) +& FromMatcher(
-          from
-        ) +& ToMatcher(to) +& BodyMatcher(body) => {
-      val inbound = InboundTwilioText(msid, from, to, body)
-      for {
-        _ <- Logger[F].info(
-              s"RECEIVED THE FOLLOWING msid: $msid, from: $from, to: $to, body: $body"
-            )
-        _ <- proxies
-              .startProxy(inbound)
-              .map(_ => ())
-              .recover(errorHandler.recovering)
-        _ <- Logger[F].info("kicked off the proxy proces")
-        //by replying 204 no content we are telling twilio that every is
-        //good and we dont need it to do anything else for us
-        //if we respond 200 it will expect there to be TWIML (twilio xml)
-        // in the body of the response and will show errors in the console debugger when
-        //there is not
-        resp <- NoContent()
-      } yield resp
-    }
   }
-
 }
 
 object ParamMatchers {
-
-  object MessageSidMatcher
-      extends QueryParamDecoderMatcher[String]("MessageSid")
-  object FromMatcher extends QueryParamDecoderMatcher[String]("From")
   object ToMatcher   extends QueryParamDecoderMatcher[String]("To")
   object BodyMatcher extends QueryParamDecoderMatcher[String]("Body")
 }
